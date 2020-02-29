@@ -11,23 +11,27 @@ import im.zhaojun.common.model.StorageConfig;
 import im.zhaojun.common.model.constant.StorageConfigConstant;
 import im.zhaojun.common.model.dto.FileItemDTO;
 import im.zhaojun.common.model.enums.FileTypeEnum;
-import im.zhaojun.common.model.enums.StorageTypeEnum;
 import im.zhaojun.common.repository.StorageConfigRepository;
+import im.zhaojun.common.service.AbstractFileService;
+import im.zhaojun.common.service.StorageConfigService;
 import im.zhaojun.common.util.StringUtils;
 import im.zhaojun.onedrive.common.model.OneDriveToken;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.Resource;
-import java.net.URLDecoder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * @author Zhao Jun
  * 2020/1/29 11:54
  */
-public abstract class AbstractOneDriveService {
+@Slf4j
+public abstract class AbstractOneDriveService extends AbstractFileService {
 
     protected static final String DRIVER_INFO_URL = "https://{graphEndPoint}/v1.0/me/drives";
 
@@ -45,9 +49,12 @@ public abstract class AbstractOneDriveService {
     @Resource
     private StorageConfigRepository storageConfigRepository;
 
-    public OneDriveToken getRefreshToken(StorageTypeEnum storageType) {
+    @Resource
+    private StorageConfigService storageConfigService;
+
+    public OneDriveToken getRefreshToken() {
         StorageConfig refreshStorageConfig =
-                storageConfigRepository.findByTypeAndKey(storageType, StorageConfigConstant.REFRESH_TOKEN_KEY);
+                storageConfigRepository.findByTypeAndKey(this.getStorageTypeEnum(), StorageConfigConstant.REFRESH_TOKEN_KEY);
 
         String param = "client_id=" + getClientId() +
                 "&redirect_uri=" + getRedirectUri() +
@@ -79,13 +86,12 @@ public abstract class AbstractOneDriveService {
         return JSONObject.parseObject(response.body(), OneDriveToken.class);
     }
 
-
-
     public String getUserInfo() {
         return oneDriveRestTemplate.getForObject(DRIVER_INFO_URL, String.class);
     }
 
-    public List<FileItemDTO> list(String basePath, String path) {
+    @Override
+    public List<FileItemDTO> fileList(String path) {
         path = StringUtils.removeFirstSeparator(path);
         String fullPath = StringUtils.getFullPath(basePath, path);
 
@@ -97,6 +103,7 @@ public abstract class AbstractOneDriveService {
             String requestUrl;
 
             if (nextLink != null) {
+                nextLink = nextLink.replace("+", "%2B");
                 requestUrl = URLUtil.decode(nextLink);
             }else if ("/".equalsIgnoreCase(fullPath) || "".equalsIgnoreCase(fullPath)) {
                 requestUrl = DRIVER_ROOT_URL;
@@ -105,7 +112,15 @@ public abstract class AbstractOneDriveService {
             }
             fullPath = StringUtils.removeLastSeparator(fullPath);
 
-            ResponseEntity<String> responseEntity = oneDriveRestTemplate.getForEntity(requestUrl, String.class, getGraphEndPoint(), fullPath);
+            ResponseEntity<String> responseEntity;
+            try {
+                responseEntity = oneDriveRestTemplate.getForEntity(requestUrl, String.class, getGraphEndPoint(), fullPath);
+            } catch (HttpClientErrorException e) {
+                log.debug("调用 OneDrive 时出现了网络异常: {} , 已尝试重新刷新 token 后再试.", e.getMessage());
+                refreshOneDriveToken();
+                responseEntity = oneDriveRestTemplate.getForEntity(requestUrl, String.class, getGraphEndPoint(), fullPath);
+            }
+
             String body = responseEntity.getBody();
 
             JSONObject root = JSON.parseObject(body);
@@ -137,11 +152,14 @@ public abstract class AbstractOneDriveService {
         return result;
     }
 
+    @Override
+    public FileItemDTO getFileItem(String path) {
 
-    public FileItemDTO getItem(String path) {
+        String fullPath = StringUtils.getFullPath(basePath, path);
+
         String requestUrl;
 
-        ResponseEntity<String> responseEntity = oneDriveRestTemplate.getForEntity(DRIVER_ITEM_URL, String.class, path);
+        ResponseEntity<String> responseEntity = oneDriveRestTemplate.getForEntity(DRIVER_ITEM_URL, String.class, getGraphEndPoint(), fullPath);
         String body = responseEntity.getBody();
 
         JSONObject fileItem = JSON.parseObject(body);
@@ -174,4 +192,21 @@ public abstract class AbstractOneDriveService {
     public abstract String getClientSecret();
 
     public abstract String getScope();
+
+    public void refreshOneDriveToken() {
+        OneDriveToken refreshToken = getRefreshToken();
+
+        if (refreshToken.getAccessToken() == null || refreshToken.getRefreshToken() == null) {
+            return;
+        }
+
+        StorageConfig accessTokenConfig =
+                storageConfigService.selectByTypeAndKey(this.getStorageTypeEnum(), StorageConfigConstant.ACCESS_TOKEN_KEY);
+        StorageConfig refreshTokenConfig =
+                storageConfigService.selectByTypeAndKey(this.getStorageTypeEnum(), StorageConfigConstant.REFRESH_TOKEN_KEY);
+        accessTokenConfig.setValue(refreshToken.getAccessToken());
+        refreshTokenConfig.setValue(refreshToken.getRefreshToken());
+
+        storageConfigService.updateStorageConfig(Arrays.asList(accessTokenConfig, refreshTokenConfig));
+    }
 }

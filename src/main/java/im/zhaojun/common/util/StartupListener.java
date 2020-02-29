@@ -1,9 +1,14 @@
 package im.zhaojun.common.util;
 
 import cn.hutool.core.net.NetUtil;
+import im.zhaojun.common.cache.ZFileCache;
 import im.zhaojun.common.exception.InitializeException;
+import im.zhaojun.common.service.AbstractFileService;
 import im.zhaojun.common.service.FileAsyncCacheService;
+import im.zhaojun.common.service.SystemConfigService;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationStartedEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.core.env.Environment;
@@ -11,7 +16,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
-import java.util.LinkedHashSet;
+import java.util.*;
 
 /**
  * 项目启动监听器, 当项目启动时, 遍历当前对象存储的所有内容, 添加到缓存中.
@@ -27,11 +32,15 @@ public class StartupListener implements ApplicationListener<ApplicationStartedEv
     @Resource
     private Environment environment;
 
+    @Resource
+    private SystemConfigService systemConfigService;
+
     @Override
     public void onApplicationEvent(@NonNull ApplicationStartedEvent event) {
         printStartInfo();
         cacheAllFile();
     }
+
 
     private void printStartInfo() {
         String serverPort = environment.getProperty("server.port", "8080");

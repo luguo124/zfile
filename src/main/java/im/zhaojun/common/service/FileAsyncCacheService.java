@@ -1,21 +1,21 @@
 package im.zhaojun.common.service;
 
-import cn.hutool.core.util.ObjectUtil;
-import com.alicp.jetcache.Cache;
-import com.alicp.jetcache.anno.CacheType;
-import com.alicp.jetcache.anno.CreateCache;
+import im.zhaojun.common.cache.ZFileCache;
 import im.zhaojun.common.config.StorageTypeFactory;
 import im.zhaojun.common.model.dto.FileItemDTO;
 import im.zhaojun.common.model.enums.FileTypeEnum;
 import im.zhaojun.common.model.enums.StorageTypeEnum;
 import im.zhaojun.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.ArrayDeque;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author zhaojun
@@ -26,20 +26,28 @@ public class FileAsyncCacheService {
 
     public static final String CACHE_PROCESS_PREFIX = "zfile-process-cache:";
 
-    public static final String CACHE_FILE_COUNT_KEY = "file-count";
-
-    public static final String CACHE_DIRECTORY_COUNT_KEY = "directory-count";
-
-    @CreateCache(name = "SYSTEM_CONFIG_CACHE_PREFIX", cacheType = CacheType.LOCAL)
-    private Cache<String, Integer> cache;
-    
     private boolean cacheFinish;
 
     @Resource
     private SystemConfigService systemConfigService;
 
+    private volatile boolean stopFlag = false;
+
+    @Resource
+    private ZFileCache zFileCache;
+
+    @Value("${zfile.cache.auto-refresh.enable}")
+    protected boolean enableAutoRefreshCache;
+
+    @Value("${zfile.cache.auto-refresh.delay}")
+    protected Long delay;
+
+    @Value("${zfile.cache.auto-refresh.interval}")
+    protected Long interval;
+
     @Async
     public void cacheGlobalFile() {
+        stopFlag = false;
         StorageTypeEnum storageStrategy = systemConfigService.getCurrentStorageStrategy();
 
         if (storageStrategy == null) {
@@ -60,15 +68,7 @@ public class FileAsyncCacheService {
             return;
         }
 
-        Integer cacheDirectoryCount = cache.get(CACHE_DIRECTORY_COUNT_KEY);
-        if (cacheDirectoryCount == null) {
-            cacheDirectoryCount = 0;
-        }
-
-        Integer cacheFileCount = cache.get(CACHE_FILE_COUNT_KEY);
-        if (cacheFileCount == null) {
-            cacheFileCount = 0;
-        }
+        Integer cacheDirectoryCount = 0;
 
         log.info("缓存 {} 所有文件开始", storageStrategy.getDescription());
         long startTime = System.currentTimeMillis();
@@ -80,18 +80,10 @@ public class FileAsyncCacheService {
             while (!queue.isEmpty()) {
                 FileItemDTO fileItemDTO = queue.pop();
 
-                if (FileTypeEnum.FOLDER.equals(fileItemDTO.getType())) {
-                    cacheDirectoryCount++;
+                if (stopFlag) {
+                    zFileCache.clear();
+                    break;
                 }
-                if (FileTypeEnum.FILE.equals(fileItemDTO.getType())) {
-                    cacheFileCount++;
-                }
-
-                log.debug("已缓存 {} 个文件夹", cacheDirectoryCount);
-                cache.put(CACHE_DIRECTORY_COUNT_KEY, cacheDirectoryCount);
-
-                log.debug("已缓存 {} 个文件", cacheFileCount);
-                cache.put(CACHE_FILE_COUNT_KEY, cacheFileCount);
 
                 if (fileItemDTO.getType() == FileTypeEnum.FOLDER) {
                     String filePath = StringUtils.removeDuplicateSeparator("/" + fileItemDTO.getPath() + "/" + fileItemDTO.getName() + "/");
@@ -100,34 +92,86 @@ public class FileAsyncCacheService {
                     queue.addAll(fileItems);
                 }
             }
-            cache.put(CACHE_DIRECTORY_COUNT_KEY, cacheDirectoryCount);
-            cache.put(CACHE_FILE_COUNT_KEY, cacheFileCount);
         } catch (Exception e) {
             log.error("缓存所有文件失败", e);
             e.printStackTrace();
         }
         long endTime = System.currentTimeMillis();
-        log.info("缓存 {} 所有文件结束, 用时: {} 秒, 文件夹共 {} 个, 文件共 {} 个",
-                storageStrategy.getDescription(),
-                ( (endTime - startTime) / 1000 ), cacheDirectoryCount, cacheFileCount);
-        cacheFinish = true;
+
+        if (stopFlag) {
+            log.info("缓存 {} 所有文件被强制结束, 用时: {} 秒", storageStrategy.getDescription(), ((endTime - startTime) / 1000));
+            cacheFinish = false;
+            stopFlag = false;
+        } else {
+            log.info("缓存 {} 所有文件结束, 用时: {} 秒", storageStrategy.getDescription(), ((endTime - startTime) / 1000));
+            enableCacheAutoRefreshTask();
+            cacheFinish = true;
+            stopFlag = false;
+        }
     }
 
+    private void enableCacheAutoRefreshTask() {
+        StorageTypeEnum currentStorageStrategy = systemConfigService.getCurrentStorageStrategy();
 
-    /**
-     * 清理缓存的文件/文件夹数量统计
-     */
-    public void resetCacheCount() {
-        cache.remove(CACHE_DIRECTORY_COUNT_KEY);
-        cache.remove(CACHE_FILE_COUNT_KEY);
+        if (enableAutoRefreshCache) {
+            ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+            scheduledExecutorService.scheduleWithFixedDelay(() -> {
+                zFileCache.setLastCacheAutoRefreshDate(new Date());
+
+                boolean enableCache = systemConfigService.getEnableCache();
+
+                if (!enableCache) {
+                    log.debug("当前存储引擎未开启缓存, 跳过自动刷新缓存");
+                    zFileCache.clear();
+                    return;
+                }
+
+                log.debug("开始调用自动刷新缓存");
+
+                Set<String> keySet = zFileCache.keySet();
+
+                ArrayList<String> keys = new ArrayList<>(keySet);
+
+
+                for (String key : keys) {
+                    try {
+                        Thread.sleep(300);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    if (stopFlag) {
+                        break;
+                    }
+
+                    zFileCache.remove(key);
+                    AbstractFileService currentFileService = systemConfigService.getCurrentFileService();
+                    try {
+                        if (Objects.equals(currentStorageStrategy, systemConfigService.getCurrentStorageStrategy())) {
+                            currentFileService.fileList(key);
+                        }
+                    } catch (Exception e) {
+                        log.error("刷新过程中出错 : [" + key + "]", e);
+                    }
+                }
+
+                if (stopFlag) {
+                    log.debug("检测到停止 [{}] 缓存指令, 已停止自动刷新任务", currentStorageStrategy);
+                    scheduledExecutorService.shutdownNow();
+                    stopFlag = false;
+                } else {
+                    log.debug("自动刷新缓存完成");
+                }
+            }, delay, interval, TimeUnit.SECONDS);
+        }
     }
 
-    public Integer getCacheDirectoryCount() {
-        return ObjectUtil.defaultIfNull(cache.get(CACHE_DIRECTORY_COUNT_KEY), 0);
+    public void stopScheduled() {
+        this.stopFlag = true;
     }
 
-    public Integer getCacheFileCount() {
-        return ObjectUtil.defaultIfNull(cache.get(CACHE_FILE_COUNT_KEY), 0);
+    public void enableScheduled() {
+        this.stopFlag = false;
     }
 
     public boolean isCacheFinish() {
@@ -137,4 +181,5 @@ public class FileAsyncCacheService {
     public void setCacheFinish(boolean cacheFinish) {
         this.cacheFinish = cacheFinish;
     }
+
 }

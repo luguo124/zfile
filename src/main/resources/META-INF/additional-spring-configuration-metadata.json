@@ -6,10 +6,25 @@
             "description": "目录缓存过期时间 和 下载地址过期时间. 单位为秒."
         },
         {
-            "name": "zfile.constant.header",
+            "name": "zfile.cache.auto-refresh.enable",
+            "type": "java.lang.Boolean",
+            "description": "是否开启自动刷新缓存."
+        },
+        {
+            "name": "zfile.cache.auto-refresh.delay",
+            "type": "java.lang.Long",
+            "description": "启动项目后多久开始自动刷新缓存, 推荐与 interval 一致, 因为项目启动时会缓存所有文件. 单位为秒.."
+        },
+        {
+            "name": "zfile.cache.auto-refresh.interval",
+            "type": "java.lang.Long",
+            "description": "任务间隔时间, 也就是每多长时间会自动刷新缓存一次.."
+        },
+        {
+            "name": "zfile.constant.readme",
             "type": "java.lang.String",
-            "defaultValue": "header.md",
-            "description": "头部文件 文件名."
+            "defaultValue": "readme.md",
+            "description": "文档文件 文件名."
         },
         {
             "name": "zfile.constant.password",
@@ -18,24 +33,44 @@
             "description": "密码文件 文件名."
         },
         {
-            "name": "zfile.onedirve.clientId",
+            "name": "zfile.onedrive.clientId",
             "type": "java.lang.String",
             "description": "OneDrive ClientId."
         },
         {
-            "name": "zfile.onedirve.clientSecret",
+            "name": "zfile.onedrive.clientSecret",
             "type": "java.lang.String",
             "description": "OneDrive ClientSecret."
         },
         {
-            "name": "zfile.onedirve.redirectUri",
+            "name": "zfile.onedrive.redirectUri",
             "type": "java.lang.String",
             "description": "OneDrive 认证重定向地址."
         },
         {
-            "name": "zfile.onedirve.scope",
+            "name": "zfile.onedrive.scope",
             "type": "java.lang.String",
             "description": "OneDrive 认证权限."
+        },
+        {
+            "name": "zfile.onedrive-china.clientId",
+            "type": "java.lang.String",
+            "description": "OneDrive China ClientId."
+        },
+        {
+            "name": "zfile.onedrive-china.clientSecret",
+            "type": "java.lang.String",
+            "description": "OneDrive China ClientSecret."
+        },
+        {
+            "name": "zfile.onedrive-china.redirectUri",
+            "type": "java.lang.String",
+            "description": "OneDrive China 认证重定向地址."
+        },
+        {
+            "name": "zfile.onedrive-china.scope",
+            "type": "java.lang.String",
+            "description": "OneDrive China 认证权限."
         }
     ]
 }

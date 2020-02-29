@@ -11,12 +11,14 @@
 
 预览地址: [https://zfile.jun6.net](https://zfile.jun6.net)
 
+文档地址: [http://docs.zhaojun.im/zfile](http://docs.zhaojun.im/zfile)
+
 ## 系统特色
 
 * 内存缓存 (免安装)
 * 内存数据库 (免安装)
 * 个性化配置
-* 自定义目录的 header 说明文件
+* 自定义目录的 readme 说明文件
 * 自定义 JS, CSS
 * 文件夹密码
 * 支持在线浏览文本文件, 视频, 图片, 音乐. (支持 FLV 和 HLS)
@@ -38,15 +40,15 @@ apt update
 apt install -y openjdk-8-jre-headless unzip
 ```
 
-> 如为更新程序, 则请先执行 `rm -rf ~/zfile` 清理旧程序. 首次安装请忽略此选项.
+> 如为更新程序, 则请先执行 `~/zfile/bin/stop.sh && rm -rf ~/zfile` 清理旧程序. 首次安装请忽略此选项.
 
 下载项目:
 
 ```bash
-wget -P ~ https://c.jun6.net/ZFILE/zfile-1.2.1.war
 cd ~
-mkdir zfile && unzip zfile-1.2.1.war -d zfile && rm -rf zfile-1.2.1.war
-chmod +x ~/zfile/bin/*.sh
+wget https://c.jun6.net/ZFILE/zfile-release.war
+mkdir zfile && unzip zfile-release.war -d zfile && rm -rf zfile-release.war
+chmod +x zfile/bin/*.sh
 ```
 
 程序的目录结构为:
@@ -84,12 +86,12 @@ chmod +x ~/zfile/bin/*.sh
 
 国际/家庭/个人版:
 
-https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=09939809-c617-43c8-a220-a93c1513c5d4&response_type=code&redirect_uri=https://zfile.jun6.net/onedirve/callback&scope=offline_access%20User.Read%20Files.ReadWrite.All
+https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=09939809-c617-43c8-a220-a93c1513c5d4&response_type=code&redirect_uri=https://zfile.jun6.net/onedrive/callback&scope=offline_access%20User.Read%20Files.ReadWrite.All
 
 
 世纪互联版:
 
-https://login.chinacloudapi.cn/common/oauth2/v2.0/authorize?client_id=4a72d927-1907-488d-9eb2-1b465c53c1c5&response_type=code&redirect_uri=https://zfile.jun6.net/onedirve/china-callback&scope=offline_access%20User.Read%20Files.ReadWrite.All
+https://login.chinacloudapi.cn/common/oauth2/v2.0/authorize?client_id=4a72d927-1907-488d-9eb2-1b465c53c1c5&response_type=code&redirect_uri=https://zfile.jun6.net/onedrive/china-callback&scope=offline_access%20User.Read%20Files.ReadWrite.All
 
 
 然后分别填写至访问令牌和刷新令牌即可:
@@ -99,7 +101,6 @@ https://login.chinacloudapi.cn/common/oauth2/v2.0/authorize?client_id=4a72d927-1
 ## 运行环境
 
 * JDK: `1.8`
-* 缓存: `caffeine`
 * 数据库: `h2/mysql`
 
 ## 预览
@@ -119,19 +120,27 @@ https://login.chinacloudapi.cn/common/oauth2/v2.0/authorize?client_id=4a72d927-1
 
 默认 H2 数据库文件地址: `~/.zfile/db/`, `~` 表示用户目录, windows 为 `C:/Users/用户名/`, linux 为 `/home/用户名/`, root 用户为 `/root/`
 
-### 头尾文件和加密文件
+### 文档文件和加密文件
 
-- 目录头部显示文件名为 `header.md`
+- 目录文档显示文件名为 `readme.md`
 - 目录需要密码访问, 添加文件 `password.txt` (无法拦截此文件被下载, 但可以改名文件)
 
-## TODO
+## 开发计划
 
 - [x] API 支持 [点击查看文档](https://github.com/zhaojun1998/zfile/blob/master/API.md)
 - [x] 更方便的部署方式
-- [ ] 文本预览更换更好用的编辑器
-- [ ] 后台支持上传、编辑、删除等操作
-- [ ] WebDav 支持
-- [ ] Docker 支持
+- [x] 布局优化 - 自定义操作按钮 (现为右键实现)
+- [x] 后台优化 - 设置按照其功能进行分离
+- [x] 体验优化 - 支持前后端分离部署
+- [x] 体验优化 - 文本预览更换 vscode 同款编辑器 monaco editor
+- [ ] 新功能 - 后台支持上传、编辑、删除等操作
+- [ ] 新功能 - WebDav 支持
+- [ ] 新功能 - Docker 支持
+- [ ] 新功能 - 离线下载 (aria2)
+- [ ] 体验优化 - 忽略文件列表 (正则表达式)
+- [ ] 体验优化 - 自定义支持预览的文件后缀 (正则表达式)
+- [ ] 架构调整 - 支持多存储策略
+- [ ] 体验优化 - 一键安装脚本
 
 ## 支持作者
 

@@ -1,7 +1,10 @@
 package im.zhaojun.common.controller;
 
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.util.ZipUtil;
 import im.zhaojun.common.config.StorageTypeFactory;
 import im.zhaojun.common.model.StorageConfig;
+import im.zhaojun.common.model.SystemMonitorInfo;
 import im.zhaojun.common.model.dto.ResultBean;
 import im.zhaojun.common.model.dto.StorageStrategyDTO;
 import im.zhaojun.common.model.dto.SystemConfigDTO;
@@ -10,19 +13,17 @@ import im.zhaojun.common.service.AbstractFileService;
 import im.zhaojun.common.service.FileAsyncCacheService;
 import im.zhaojun.common.service.StorageConfigService;
 import im.zhaojun.common.service.SystemConfigService;
+import im.zhaojun.common.util.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import javax.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * 后台管理
@@ -43,6 +44,8 @@ public class AdminController {
     @Resource
     private FileAsyncCacheService fileAsyncCacheService;
 
+    private ScheduledExecutorService scheduledExecutorService;
+
     /**
      * 获取系统配置
      */
@@ -57,17 +60,19 @@ public class AdminController {
      */
     @PostMapping("/config")
     public ResultBean updateConfig(SystemConfigDTO systemConfigDTO) throws Exception {
-        AbstractFileService currentFileService = systemConfigService.getCurrentFileService();
-        systemConfigDTO.setId(1);
-        systemConfigService.updateSystemConfig(systemConfigDTO);
-
-        StorageTypeEnum currentStorageStrategy = currentFileService.getStorageTypeEnum();
+        StorageTypeEnum currentStorageStrategy = systemConfigService.getCurrentStorageStrategy();
         if (!Objects.equals(currentStorageStrategy, systemConfigDTO.getStorageStrategy())) {
+            if (systemConfigService.getEnableCache()) {
+                return ResultBean.error("不支持缓存开启状态下, 切换存储策略, 请先手动关闭缓存");
+            }
             log.info("已将存储策略由 {} 切换为 {}",
                     currentStorageStrategy.getDescription(),
                     systemConfigDTO.getStorageStrategy().getDescription());
             refreshStorageStrategy();
         }
+
+        systemConfigDTO.setId(1);
+        systemConfigService.updateSystemConfig(systemConfigDTO);
 
         return ResultBean.success();
     }
@@ -92,6 +97,9 @@ public class AdminController {
         return ResultBean.success(storageConfigList);
     }
 
+    /**
+     * 返回支持的存储引擎.
+     */
     @GetMapping("/support-strategy")
     public ResultBean supportStrategy() {
         List<StorageStrategyDTO> result = new ArrayList<>();
@@ -150,7 +158,7 @@ public class AdminController {
     /**
      * 更新存储策略
      */
-    public void refreshStorageStrategy() throws Exception {
+    public void refreshStorageStrategy() {
         StorageTypeEnum storageStrategy = systemConfigService.getCurrentStorageStrategy();
         refreshStorageStrategy(storageStrategy);
     }
@@ -158,7 +166,7 @@ public class AdminController {
     /**
      * 更新存储策略
      */
-    public void refreshStorageStrategy(StorageTypeEnum storageStrategy) throws Exception {
+    private void refreshStorageStrategy(StorageTypeEnum storageStrategy) {
         if (storageStrategy == null) {
             log.info("尚未配置存储策略.");
         } else {
@@ -168,6 +176,25 @@ public class AdminController {
             log.info("切换至存储类型: {}", storageStrategy.getDescription());
             fileAsyncCacheService.cacheGlobalFile();
         }
+    }
+
+    /**
+     * 系统日志下载
+     */
+    @GetMapping("/log")
+    public ResponseEntity<Object> downloadLog(HttpServletResponse response) {
+        String userHome = System.getProperty("user.home");
+        File fileZip = ZipUtil.zip(userHome + "/.zfile/logs");
+        String currentDate = DateUtil.format(new Date(), "yyyy-MM-dd HH:mm:ss");
+        return FileUtil.export(fileZip, "ZFile 诊断日志 - " + currentDate + ".zip");
+    }
+
+    /**
+     * 获取系统监控信息
+     */
+    @GetMapping("monitor")
+    public ResultBean monitor() {
+        return ResultBean.success(new SystemMonitorInfo());
     }
 
 }

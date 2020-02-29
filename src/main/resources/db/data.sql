@@ -10,6 +10,12 @@ INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (9, 'enableCache', '是�
 INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (10, 'searchContainEncryptedFile', '搜索包含加密文件');
 INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (11, 'customCss', '自定义 CSS');
 INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (12, 'customJs', '自定义 JS (可用于统计代码)');
+INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (13, 'tableSize', '表格大小');
+INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (14, 'showOperator', '是否显示操作按钮');
+INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (15, 'showDocument', '是否显示文档');
+INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (16, 'announcement', '网站公告');
+INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (17, 'showAnnouncement', '是否显示网站公告');
+INSERT INTO SYSTEM_CONFIG (`ID`, `k`, `REMARK`) VALUES (18, 'layout', '页面布局');
 
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (1, 'bucket-name', '云存储服务名称', 'upyun');
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (2, 'username', '操作员名称', 'upyun');
@@ -34,7 +40,7 @@ INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (20, 'host', '域
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (21, 'port', '端口', 'ftp');
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (22, 'username', '用户名', 'ftp');
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (23, 'password', '密码', 'ftp');
-INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (24, 'domain', '域名', 'ftp');
+INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (24, 'domain', '加速域名', 'ftp');
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (25, 'secretId', 'SecretId', 'tencent');
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (26, 'secretKey', 'SecretKey', 'tencent');
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (27, 'bucket-name', '云存储服务名称', 'tencent');
@@ -66,3 +72,8 @@ INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (52, 'pathStyle',
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (53, 'isPrivate', '是否是私有空间', 's3');
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (54, 'base-path', '基路径', 'onedrive');
 INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (55, 'base-path', '基路径', 'onedrive-china');
+INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (56, 'bucket-name', '云存储服务名称', 'ufile');
+INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (57, 'username', '操作员名称', 'ufile');
+INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (58, 'password', '操作员密码', 'ufile');
+INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (59, 'domain', '加速域名', 'ufile');
+INSERT INTO STORAGE_CONFIG (`ID`, `k`, `TITLE`, `TYPE`) VALUES (60, 'base-path', '基路径', 'ufile');
